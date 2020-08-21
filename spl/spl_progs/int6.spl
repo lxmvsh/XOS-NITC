@@ -1,0 +1,93 @@
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias sysCallNo S1;
+sysCallNo = [physicalSP -1];
+alias filename S2;
+filename = [physicalSP -3];
+alias i S3;
+alias j S4;
+alias count S5;
+alias currentPCB S6;
+
+if(sysCallNo == 9) then
+	i = 0;
+	while(FAT + i < 3071) do
+		if([FAT + i + 0] == filename) then
+			break;
+		endif;
+		i = i + 8;
+	endwhile;
+	if(FAT + i > 3071) then
+		[physicalSP -2] = -1;
+		ireturn;
+	endif;
+	load(1, [FAT + i + 2]);
+	j = 512;
+	count = 0;
+	while(j < 1024) do
+		if([j] > 24 && [j] < 448) then
+			count = count + 1;
+		endif;
+		j = j+1;
+	endwhile;
+	i = PTBR;
+	j = 0;
+	while(i < PTBR + 6) do
+		if([i+1]=="01" || [i+1] =="11") then
+			j = j+1;
+		endif;
+		i = i+2;
+	endwhile;
+	i = count;
+	if(j>count) then
+		while(i<3) do
+			[PTBR + i*2] = -1;
+			[PTBR + i*2 +1 ] = "00";
+			i = i + 1;
+		endwhile;
+	else
+		if(j<count) then 
+			while(j != count) do
+				i = 1280;
+				while(i< 1344) do
+					if ([i]==0) then
+						break;
+					endif;
+					i = i+1;
+				endwhile;
+				if(i>1343) then 
+					[physicalSP -2] = -1;
+					ireturn;
+				endif;
+				[j * 2 + PTBR ] = i - 1280;
+				[j * 2 + PTBR + 1 ] = "01";
+				j = j + 1;
+			endwhile; 
+		endif;
+	endif;
+	j = 512;
+	i = 0;
+	while( j < 1024) do
+		if([j]>24 && [j]<512) then
+			load ([PTBR + i *2], [j]);
+			i = i + 1;
+		endif;
+		j = j+1;
+	endwhile;	
+	i = currentPCB + 15;
+	while( i < currentPCB + 15) do
+		if([i] != -1) then
+			[FILE_TABLE + [i]*2 + 1] = [FILE_TABLE + [i]*2 + 1 ] -1;
+			if([FILE_TABLE + [i]*2 + 1] ==0) then	
+				[FILE_TABLE + [i]*2 ] = -1;
+			endif;
+			[i]= -1;
+			[i+1]=0;
+		endif;
+		i = i+2;
+	endwhile;
+	SP = 3 *512;
+	physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+	[physicalSP] =0;
+	ireturn;
+endif;

@@ -1,0 +1,69 @@
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias sysCallNo S1;
+sysCallNo = [physicalSP -1];
+alias fileDesc S2;
+fileDesc = [physicalSP -4];
+alias pointWord S3;
+pointWord = [physicalSP -3];
+alias currentPID S4;
+currentPID = (PTBR - 1024) / 8;
+alias currentPCB S5;
+currentPCB = READY_LIST + (currentPID * 32);
+alias PSWOFT S6;
+alias Lseek S7;
+if(sysCallNo == 6) then
+	if(fileDesc>7 || fileDesc<0) then
+		[physicalSP-2]=-1;
+		ireturn;
+	endif;
+	if([currentPCB + 15 + fileDesc*2] == -1) then
+		[physicalSP-2]=-1;
+		ireturn;
+	endif;
+	PSWOFT = [currentPCB + 15 + fileDesc*2];
+	Lseek = [currentPCB + 15 + fileDesc*2 + 1];
+	alias fatEntry S8;
+	fatEntry = [FILE_TABLE + (PSWOFT * 2)] * 8 + FAT;
+	alias fileSize S9;
+	fileSize = [fatEntry + 2];
+	if(Lseek>fileSize || Lseek<0) then
+		[physicalSP-2]=-1;
+		ireturn;
+	endif;
+	[currentPCB + 15 + fileDesc*2 + 1] = pointWord;
+	[physicalSP-2]=0;
+	ireturn;
+endif;
+if(sysCallNo == 7) then
+	if(fileDesc>7 || fileDesc<0) then
+		[physicalSP-2]=-1;
+		ireturn;
+	endif;
+	if([currentPCB + 15 + fileDesc*2] == -1) then
+		[physicalSP-2]=-1;
+		ireturn;
+	endif;
+	PSWOFT = [currentPCB + 15 + fileDesc*2];
+	Lseek = [currentPCB + 15 + fileDesc*2 + 1];
+	alias fatEntry S10;
+	fatEntry = [FILE_TABLE + (PSWOFT * 2)] * 8 + FAT;
+	alias BB S11;
+	BB = [fatEntry + 2];
+	load (1, BB);
+	alias fileSize S12;
+	fileSize = [fatEntry + 1];
+	if(Lseek>=fileSize)then
+		[physicalSP-2]=-1;
+		ireturn;
+	endif;
+	alias blockNo S13;
+	blockNo = Lseek / 512;
+	alias blockRead S14;
+	blockRead = [SCRATCHPAD + blockNo];
+	load(1, blockRead);
+	[physicalSP-3] = [SCRATCHPAD + (Lseek%512)];
+	[currentPCB + 15 + fileDesc*2 + 1] = [currentPCB + 15 + fileDesc*2 + 1] + 1;
+	[physicalSP-2]=0;
+	ireturn;
+endif;

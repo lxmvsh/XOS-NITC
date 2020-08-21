@@ -1,0 +1,64 @@
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias sysCallNo S1;
+sysCallNo = [physicalSP - 1];
+
+alias filename S2;
+alias dfl S4;
+filename = [physicalSP - 3];
+
+if(sysCallNo == 1) then
+	alias fat S3;
+	fat = FAT;	
+	while(fat<3072) do
+		if([fat+0] == filename) then
+			break;
+		endif;
+		fat = fat+8;
+	endwhile;
+	if(fat<3072) then
+		[physicalSP - 2] = 0;
+		ireturn;
+	endif;
+	dfl = 3072;
+	while(dfl<3519) do
+		if([dfl+0] == 0) then
+			break;
+		endif;
+		dfl = dfl+1;
+	endwhile;
+	if(dfl>=3519) then
+		[physicalSP - 2] = -1;
+		ireturn;
+	endif;
+	fat = FAT;
+	while(fat<3072) do
+		if([fat+0] == -1) then
+			break;
+		endif;
+		fat = fat+8;
+	endwhile;
+	if(fat>=3072) then
+		[physicalSP - 2] = -1;
+		ireturn;
+	endif;
+
+	[fat+0] = filename;
+	[fat+1] = 0;
+	[fat+2] = dfl-3072;
+	load(1,[fat+2]);
+	alias scratch S5;
+	scratch = 512;	
+	while(scratch<1024) do
+		[scratch+ 0] = -1;
+		scratch = scratch+1;
+	endwhile;
+
+	store(1,[fat+2]);
+	[dfl] = 1;
+	store(5,19);
+	store(6,20);
+	[physicalSP - 2] = 0;
+	ireturn;		
+endif;
+ireturn;

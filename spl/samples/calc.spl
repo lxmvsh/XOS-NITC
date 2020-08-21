@@ -1,0 +1,8 @@
+alias a S0;
+alias b S1;
+read a;
+read b;
+print a+b;
+print a-b;
+print a*b;
+print a/b;

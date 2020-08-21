@@ -1,0 +1,64 @@
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias sysCallNo S1;
+sysCallNo = [physicalSP - 1];
+alias fileDesc S2;
+fileDesc = [physicalSP - 4];
+alias wordToWrite S3;
+wordToWrite = [physicalSP - 3];
+alias currentPID S6;
+currentPID = (PTBR - 1024) / 8;
+alias currentPCB S7;
+currentPCB = READY_LIST + (currentPID * 32);
+alias PSWOFT S8;
+alias Lseek S9;
+
+if(sysCallNo == 5) then 
+	if(fileDesc > 7 || fileDesc < 0) then
+		[physicalSP - 2] = -1;
+		ireturn;
+	endif;
+	if ([currentPCB + 15 + fileDesc*2] == -1) then 
+		[physicalSP - 2] = -1;
+		ireturn;
+	endif;
+	PSWOFT = [currentPCB + 15 + fileDesc*2];
+	Lseek = [currentPCB + 15 + fileDesc*2 + 1];
+	alias fatEntry S7;
+	fatEntry = [FILE_TABLE + (PSWOFT * 2)] * 8 + FAT;
+	alias BB S10;
+	BB = [fatEntry + 2];
+	load (1, BB);
+	alias blockNo S11;
+	blockNo = Lseek / 512 ;
+	alias DFL S12;
+	DFL = 0;
+	if([SCRATCHPAD + blockNo] == -1) then
+	while(DFL < 447) do
+			if([FAT + 512 + DFL] == 0) then 
+				break;
+			endif;
+			DFL = DFL + 1;
+		endwhile;
+	
+		if(DFL == 447) then
+			[physicalSP -2]=-1;
+			ireturn;
+		endif;	
+		[FAT + 512 + DFL] = 1;	
+		[SCRATCHPAD + blockNo] = DFL;
+		store(1, [fatEntry + 2]);
+		[fatEntry + 1] = [fatEntry + 1] + 512;
+		store(5,19);
+		store(6,20);
+	endif;		
+	load(1,BB);
+	alias blockWrite S13;
+	blockWrite = [SCRATCHPAD + blockNo];
+	load(1, blockWrite);
+	[SCRATCHPAD + Lseek%512] = wordToWrite;
+	store(1, blockWrite);
+	[currentPCB + 15 + fileDesc*2 + 1] = [currentPCB + 15 + fileDesc*2 + 1] + 1;
+	[physicalSP -2]=0;
+	ireturn;
+endif;

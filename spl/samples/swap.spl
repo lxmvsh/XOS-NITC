@@ -1,0 +1,12 @@
+alias t S0;
+alias a S1;
+alias b S2;
+read a;
+read b;
+print a;
+print b;
+t = a;
+a = b;
+b = t;
+print a;
+print b;

@@ -1,0 +1,77 @@
+alias physicalSP S0;
+physicalSP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+alias sysCallNo S1;
+sysCallNo = [physicalSP -1];
+alias pId S2;
+alias currentpId S3;
+alias currentPCB S4;
+alias i S5;
+alias newPhySP S7;
+alias newPCB S6;
+if(sysCallNo == 9) then
+	pId = 0;
+	while(pId<32) do
+		if([READY_LIST + (pId* 32) + 1] == 1 ) then
+			break;
+		endif;
+		pId = pId + 1;
+	endwhile;
+	if(pId == 32) then 
+		halt;
+	endif;
+	currentpId = (PTBR - 1024) / 8;
+	currentPCB = READY_LIST + currentpId *32;
+	i = 0;
+	while(currentPCB + 15 + i <31 ) do
+		if([currentPCB + 15 + i] !=-1) then
+			[1344 + [currentPCB + 15 + i]*2 + 1] = 	[1344 + [currentPCB + 15 + i]*2 + 1] - 1;	
+			if([1344 + [currentPCB + 15 + i]*2 + 1] == 0) then
+				[1344 + [currentPCB + 15 + i]*2] = -1;
+			endif;
+			[currentPCB + 15 + i] = -1;
+			[currentPCB + 15 + i + 1] = 0;
+		endif;
+		i = i+2;
+	endwhile;
+	[currentPCB + 1] = 0;
+	i =0;
+	while(i < 8) do
+		if([PTBR + i] != -1) then
+			[1280 + [PTBR + i]] = 0;
+		endif;
+		i = i+2;
+	endwhile;
+	i =0;
+	while(i<4) do
+		[PTBR + i*2] = -1;
+		[PTBR + i*2 + 1] = "00";
+		i = i + 1;
+	endwhile;
+	i = READY_LIST;
+	while(i < 2560) do
+		if([i + 1 ] == 1 ) then
+			break;
+		endif;
+		i = i + 32;
+	endwhile;
+	newPCB = i;
+	BP = [newPCB + 2];
+	SP = [newPCB + 3];
+	PTBR = [newPCB + 5];
+	PTLR = [newPCB + 6];
+	R0 = [newPCB + 7];
+	R1 = [newPCB + 8];
+	R2 = [newPCB + 9];
+	R3 = [newPCB + 10];
+	R4 = [newPCB + 11];
+	R5 = [newPCB + 12];
+	R6 = [newPCB + 13];
+	R7 = [newPCB + 14];
+	
+	SP = SP + 1;
+	newPhySP = ([PTBR + 2 * (SP / 512)] * 512) + (SP % 512);
+	[newPCB + 1 ] = 2;
+	[newPhySP ] = [newPCB + 4];
+	ireturn;
+	
+endif;
